@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>RACSA | Panel</title>
+  <link rel="icon" type="image/png" href="imagenes/logo1.png">
+  <link rel="stylesheet" href="panel.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="top-left">
+      <img src="imagenes/logo1.png" class="top-logo" alt="RACSA">
+      <div>
+        <div class="top-title">Panel RACSA</div>
+        <div id="topSub" class="top-sub">Cargando...</div>
+      </div>
+    </div>
+
+    <button id="btnLogout" class="btn-logout">Salir</button>
+  </header>
+
+  <main class="main">
+    <section id="viewRegistro" class="view active">
+      <div class="card">
+        <div class="card-title">Registro</div>
+        <div class="muted" id="txtEstado">Detecta tu ubicación para poder registrar</div>
+
+        <div class="grid">
+          <div class="mini">
+            <div class="mini-label">Sucursal</div>
+            <div id="txtSucursal" class="mini-value">---</div>
+          </div>
+          <div class="mini">
+            <div class="mini-label">Distancia</div>
+            <div id="txtDistancia" class="mini-value">---</div>
+          </div>
+          <div class="mini">
+            <div class="mini-label">Acceso</div>
+            <div id="txtAcceso" class="badge badge-no">Bloqueado</div>
+          </div>
+          <div class="mini">
+            <div class="mini-label">Precisión</div>
+            <div id="txtPrecision" class="mini-value">---</div>
+          </div>
+        </div>
+
+        <div class="card2">
+          <div class="card2-title">Hoy</div>
+          <div class="today-grid">
+            <div class="today-item">
+              <div class="today-label">Entrada</div>
+              <div id="txtEntradaHoy" class="today-value">---</div>
+            </div>
+            <div class="today-item">
+              <div class="today-label">Salida</div>
+              <div id="txtSalidaHoy" class="today-value">---</div>
+            </div>
+            <div class="today-item full">
+              <div class="today-label">Tiempo trabajado</div>
+              <div id="txtTiempoHoy" class="today-value big">---</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="btnUbicacion" class="btn btn-secondary">📡 Informar ubicación</button>
+        </div>
+
+        <div class="actions">
+          <button id="btnEntrada" class="btn btn-primary">🟢 Registrar entrada</button>
+          <button id="btnSalida" class="btn btn-outline">🔴 Registrar salida</button>
+        </div>
+
+        <div id="msgRegistro" class="msg"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Mapa</div>
+        <div class="mapbox">
+          <iframe id="mapFrame" class="map" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <section id="viewHistorial" class="view">
+      <div class="card">
+        <div class="card-title">Historial</div>
+        <div class="muted">Tus jornadas recientes</div>
+
+        <div class="filters">
+          <button id="btnRefrescarHistorial" class="btn btn-secondary small">Actualizar</button>
+        </div>
+
+        <div id="historialList" class="list"></div>
+      </div>
+    </section>
+
+    <section id="viewConfig" class="view">
+      <div class="card">
+        <div class="card-title">Configuración</div>
+
+        <div class="profile">
+          <div class="avatar">R</div>
+          <div class="profile-info">
+            <div id="cfgNombre" class="profile-name">---</div>
+            <div id="cfgRol" class="profile-sub">---</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="cfg-grid">
+          <div class="cfg-item">
+            <div class="cfg-label">Sucursal</div>
+            <div id="cfgSucursal" class="cfg-value">---</div>
+          </div>
+
+          <div class="cfg-item">
+            <div class="cfg-label">Correo</div>
+            <div id="cfgCorreo" class="cfg-value">---</div>
+          </div>
+        </div>
+
+        <div id="adminBox" class="adminbox hidden">
+          <div class="sep"></div>
+          <div class="card-title">Administración</div>
+          <div class="muted">Solo administradores</div>
+
+          <div class="actions">
+            <button id="btnIrAdmin" class="btn btn-primary">Panel de administración</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="viewRegistro">
+      <div class="tab-ico">📍</div>
+      <div class="tab-txt">Registro</div>
+    </button>
+
+    <button class="tab" data-view="viewHistorial">
+      <div class="tab-ico">🕒</div>
+      <div class="tab-txt">Historial</div>
+    </button>
+
+    <button class="tab" data-view="viewConfig">
+      <div class="tab-ico">⚙️</div>
+      <div class="tab-txt">Config</div>
+    </button>
+  </nav>
+
+  <script type="module" src="panel.js"></script>
+</body>
+</html>

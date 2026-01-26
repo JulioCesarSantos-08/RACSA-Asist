@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>RACSA | Administración</title>
+  <link rel="icon" type="image/png" href="imagenes/logo1.png">
+  <link rel="stylesheet" href="admin.css">
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="top-left">
+      <img src="imagenes/logo1.png" class="top-logo" alt="RACSA">
+      <div>
+        <div class="top-title">Administración</div>
+        <div id="topSub" class="top-sub">Cargando...</div>
+      </div>
+    </div>
+
+    <div class="top-actions">
+      <button id="btnVolver" class="btn-ghost">Volver</button>
+      <button id="btnLogout" class="btn-logout">Salir</button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="card">
+      <div class="card-title">Sucursales</div>
+      <div class="muted">Crea y administra sucursales con geocerca</div>
+
+      <form id="formSucursal" class="form-grid">
+        <div class="field">
+          <label class="label">ID sucursal</label>
+          <input id="sucId" class="input" type="text" placeholder="ej. rio_grande" required>
+        </div>
+
+        <div class="field">
+          <label class="label">Nombre</label>
+          <input id="sucNombre" class="input" type="text" placeholder="Ej. Río Grande" required>
+        </div>
+
+        <div class="field">
+          <label class="label">Latitud</label>
+          <input id="sucLat" class="input" type="number" step="any" placeholder="18.123456" required>
+        </div>
+
+        <div class="field">
+          <label class="label">Longitud</label>
+          <input id="sucLng" class="input" type="number" step="any" placeholder="-96.123456" required>
+        </div>
+
+        <div class="field">
+          <label class="label">Radio (metros)</label>
+          <input id="sucRadio" class="input" type="number" step="1" placeholder="80" required>
+        </div>
+
+        <div class="field full">
+          <button id="btnCrearSucursal" class="btn btn-primary" type="submit">Guardar sucursal</button>
+        </div>
+
+        <div id="msgSucursal" class="msg full"></div>
+      </form>
+
+      <div class="sep"></div>
+
+      <div id="listaSucursales" class="list"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Usuarios</div>
+      <div class="muted">Edita roles, sucursal y estado de usuarios</div>
+
+      <div class="filters">
+        <button id="btnRefrescarUsuarios" class="btn btn-secondary small">Actualizar</button>
+      </div>
+
+      <div id="listaUsuarios" class="list"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-title">Jornadas</div>
+      <div class="muted">Historial global con tiempo trabajado</div>
+
+      <div class="filters-grid">
+        <div class="field">
+          <label class="label">Sucursal</label>
+          <select id="fSucursal" class="select">
+            <option value="">Todas</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Usuario</label>
+          <select id="fUsuario" class="select">
+            <option value="">Todos</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Estado</label>
+          <select id="fEstado" class="select">
+            <option value="">Todos</option>
+            <option value="abierta">Abierta</option>
+            <option value="cerrada">Cerrada</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label class="label">Fecha (YYYY-MM-DD)</label>
+          <input id="fFecha" class="input" type="text" placeholder="2026-01-25">
+        </div>
+
+        <div class="field full">
+          <button id="btnRefrescarJornadas" class="btn btn-secondary small" type="button">Actualizar</button>
+        </div>
+      </div>
+
+      <div class="sep"></div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-label">Total jornadas</div>
+          <div id="stTotal" class="stat-value">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total minutos</div>
+          <div id="stMin" class="stat-value">0</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Total horas</div>
+          <div id="stHoras" class="stat-value">0</div>
+        </div>
+      </div>
+
+      <div id="listaJornadas" class="list"></div>
+    </section>
+  </main>
+
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

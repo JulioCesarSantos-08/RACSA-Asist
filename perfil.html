@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <title>RACSA | Completar perfil</title>
+  <link rel="icon" type="image/png" href="imagenes/logo1.png">
+  <link rel="stylesheet" href="perfil.css">
+</head>
+
+<body>
+  <div class="bg"></div>
+
+  <header class="topbar">
+    <div class="top-left">
+      <img src="imagenes/logo1.png" class="top-logo" alt="RACSA">
+      <div>
+        <div class="top-title">Completar perfil</div>
+        <div class="top-sub">Necesitamos tus datos para continuar</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="card">
+      <div class="card-title">Datos del usuario</div>
+      <div class="muted">Completa tu información</div>
+
+      <form id="formPerfil" class="form">
+        <label class="label">Nombre completo</label>
+        <input id="nombre" class="input" type="text" placeholder="Ej. Juan Pérez López" required>
+
+        <label class="label">Sucursal</label>
+        <select id="sucursalId" class="input" required>
+          <option value="">Cargando sucursales...</option>
+        </select>
+
+        <button id="btnGuardar" class="btn btn-primary" type="submit">
+          Guardar y continuar
+        </button>
+
+        <button id="btnSalir" class="btn btn-outline" type="button">
+          Cerrar sesión
+        </button>
+
+        <div id="msg" class="msg"></div>
+      </form>
+    </section>
+  </main>
+
+  <script type="module" src="perfil.js"></script>
+</body>
+</html>
