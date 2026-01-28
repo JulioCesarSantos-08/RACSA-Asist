@@ -6,6 +6,11 @@
   <title>RACSA | Panel</title>
   <link rel="icon" type="image/png" href="imagenes/logo1.png">
   <link rel="stylesheet" href="panel.css">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
 </head>
 
 <body>
@@ -79,7 +84,7 @@
       <div class="card">
         <div class="card-title">Mapa</div>
         <div class="mapbox">
-          <iframe id="mapFrame" class="map" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+          <div id="map" class="map"></div>
         </div>
       </div>
     </section>
@@ -153,6 +158,7 @@
     </button>
   </nav>
 
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script type="module" src="panel.js"></script>
 </body>
 </html>

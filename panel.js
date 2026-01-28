@@ -35,6 +35,7 @@ const btnEntrada = document.getElementById("btnEntrada");
 const btnSalida = document.getElementById("btnSalida");
 
 const mapFrame = document.getElementById("mapFrame");
+const mapDiv = document.getElementById("map");
 
 const historialList = document.getElementById("historialList");
 const btnRefrescarHistorial = document.getElementById("btnRefrescarHistorial");
@@ -51,6 +52,9 @@ let perfil = null;
 let sucursal = null;
 let ubicacionUsuario = null;
 let jornadaHoy = null;
+
+let map = null;
+let markersSucursales = [];
 
 function setMsg(text, type = "") {
   msgRegistro.textContent = text;
@@ -129,9 +133,46 @@ async function getJornada(uid, fechaKey) {
   return snap.val();
 }
 
+function initMap(lat, lng) {
+  if (map) return;
+
+  map = L.map(mapDiv).setView([lat, lng], 15);
+
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19
+  }).addTo(map);
+}
+
+async function cargarSucursalesMapa() {
+  if (!map) return;
+
+  markersSucursales.forEach(m => map.removeLayer(m));
+  markersSucursales = [];
+
+  const snap = await get(ref(db, "sucursales"));
+  if (!snap.exists()) return;
+
+  const iconSucursal = L.icon({
+    iconUrl: "imagenes/icono1.png",
+    iconSize: [36, 36],
+    iconAnchor: [18, 36],
+    popupAnchor: [0, -36]
+  });
+
+  Object.values(snap.val()).forEach(s => {
+    if (!s.lat || !s.lng) return;
+
+    const marker = L.marker([s.lat, s.lng], { icon: iconSucursal })
+      .addTo(map)
+      .bindPopup(`<strong>${s.nombre || "Sucursal"}</strong>`);
+
+    markersSucursales.push(marker);
+  });
+}
+
 function setMap(lat, lng) {
-  const url = `https://www.google.com/maps?q=${lat},${lng}&z=17&output=embed`;
-  mapFrame.src = url;
+  initMap(lat, lng);
+  map.setView([lat, lng], 16);
 }
 
 function evaluarAcceso() {
@@ -201,217 +242,6 @@ function obtenerUbicacion() {
   );
 }
 
-function pintarJornadaHoy() {
-  txtEntradaHoy.textContent = jornadaHoy?.entradaTs ? hora(jornadaHoy.entradaTs) : "---";
-  txtSalidaHoy.textContent = jornadaHoy?.salidaTs ? hora(jornadaHoy.salidaTs) : "---";
-
-  if (jornadaHoy?.entradaTs && jornadaHoy?.salidaTs) {
-    const min = Math.max(0, Math.round((jornadaHoy.salidaTs - jornadaHoy.entradaTs) / 60000));
-    txtTiempoHoy.textContent = minutosAHoras(min);
-  } else {
-    txtTiempoHoy.textContent = "---";
-  }
-
-  if (!jornadaHoy?.entradaTs) {
-    btnEntrada.disabled = false;
-    btnEntrada.style.opacity = "1";
-    btnSalida.disabled = true;
-    btnSalida.style.opacity = ".55";
-    return;
-  }
-
-  if (jornadaHoy?.entradaTs && !jornadaHoy?.salidaTs) {
-    btnEntrada.disabled = true;
-    btnEntrada.style.opacity = ".55";
-    btnSalida.disabled = false;
-    btnSalida.style.opacity = "1";
-    return;
-  }
-
-  if (jornadaHoy?.entradaTs && jornadaHoy?.salidaTs) {
-    btnEntrada.disabled = true;
-    btnEntrada.style.opacity = ".55";
-    btnSalida.disabled = true;
-    btnSalida.style.opacity = ".55";
-  }
-}
-
-async function cargarJornadaHoy() {
-  if (!currentUser) return;
-  jornadaHoy = await getJornada(currentUser.uid, keyHoy());
-  pintarJornadaHoy();
-}
-
-async function registrarEntrada() {
-  setMsg("");
-
-  if (!currentUser || !perfil) {
-    setMsg("Sesión inválida.", "err");
-    irLogin();
-    return;
-  }
-
-  if (!sucursal) {
-    setMsg("No tienes sucursal asignada.", "err");
-    return;
-  }
-
-  const ok = evaluarAcceso();
-  if (!ok) {
-    setMsg("No puedes registrar fuera de la sucursal.", "err");
-    return;
-  }
-
-  await cargarJornadaHoy();
-
-  if (jornadaHoy?.entradaTs) {
-    setMsg("Ya registraste tu entrada hoy.", "err");
-    return;
-  }
-
-  const now = Date.now();
-  const fechaKey = keyHoy();
-
-  const data = {
-    uid: currentUser.uid,
-    nombre: perfil.nombre || "",
-    rol: perfil.rol || "",
-    sucursalId: perfil.sucursalId || "",
-    sucursalNombre: sucursal.nombre || "",
-    entradaTs: now,
-    salidaTs: null,
-    estado: "abierta",
-    entradaLat: ubicacionUsuario.lat,
-    entradaLng: ubicacionUsuario.lng,
-    salidaLat: null,
-    salidaLng: null,
-    minutos: null
-  };
-
-  await set(ref(db, `jornadas/${currentUser.uid}/${fechaKey}`), data);
-
-  setMsg("Entrada registrada.", "ok");
-  await cargarJornadaHoy();
-}
-
-async function registrarSalida() {
-  setMsg("");
-
-  if (!currentUser || !perfil) {
-    setMsg("Sesión inválida.", "err");
-    irLogin();
-    return;
-  }
-
-  if (!sucursal) {
-    setMsg("No tienes sucursal asignada.", "err");
-    return;
-  }
-
-  const ok = evaluarAcceso();
-  if (!ok) {
-    setMsg("No puedes registrar fuera de la sucursal.", "err");
-    return;
-  }
-
-  await cargarJornadaHoy();
-
-  if (!jornadaHoy?.entradaTs) {
-    setMsg("Primero registra tu entrada.", "err");
-    return;
-  }
-
-  if (jornadaHoy?.salidaTs) {
-    setMsg("Ya registraste tu salida hoy.", "err");
-    return;
-  }
-
-  const now = Date.now();
-  const min = Math.max(0, Math.round((now - jornadaHoy.entradaTs) / 60000));
-  const fechaKey = keyHoy();
-
-  await update(ref(db, `jornadas/${currentUser.uid}/${fechaKey}`), {
-    salidaTs: now,
-    salidaLat: ubicacionUsuario.lat,
-    salidaLng: ubicacionUsuario.lng,
-    minutos: min,
-    estado: "cerrada"
-  });
-
-  setMsg("Salida registrada.", "ok");
-  await cargarJornadaHoy();
-}
-
-function renderHistorial(items) {
-  if (!items.length) {
-    historialList.innerHTML = `<div class="muted">Sin jornadas aún.</div>`;
-    return;
-  }
-
-  historialList.innerHTML = items.map(x => {
-    const estadoClass = x.estado === "cerrada" ? "pill pill-closed" : "pill pill-open";
-    const estadoTxt = x.estado === "cerrada" ? "Cerrada" : "Abierta";
-    const entrada = x.entradaTs ? hora(x.entradaTs) : "---";
-    const salida = x.salidaTs ? hora(x.salidaTs) : "---";
-    const mins = (x.entradaTs && x.salidaTs) ? Math.max(0, Math.round((x.salidaTs - x.entradaTs) / 60000)) : null;
-
-    return `
-      <div class="item">
-        <div class="item-top">
-          <div class="item-title">${x.fechaKey || ""} · ${x.sucursalNombre || ""}</div>
-          <div class="${estadoClass}">${estadoTxt}</div>
-        </div>
-        <div class="item-sub">Entrada: ${entrada} · Salida: ${salida}</div>
-        <div class="item-sub">Tiempo: ${mins === null ? "---" : minutosAHoras(mins)}</div>
-      </div>
-    `;
-  }).join("");
-}
-
-async function cargarHistorial() {
-  if (!currentUser) return;
-
-  historialList.innerHTML = `<div class="muted">Cargando...</div>`;
-
-  const snap = await get(ref(db, `jornadas/${currentUser.uid}`));
-  if (!snap.exists()) {
-    renderHistorial([]);
-    return;
-  }
-
-  const data = snap.val();
-  const keys = Object.keys(data);
-
-  const arr = keys.map(k => {
-    const j = data[k] || {};
-    return {
-      ...j,
-      fechaKey: k
-    };
-  });
-
-  arr.sort((a, b) => (b.fechaKey || "").localeCompare(a.fechaKey || ""));
-  renderHistorial(arr.slice(0, 30));
-}
-
-function activarTabs() {
-  const tabs = document.querySelectorAll(".tab");
-  const views = document.querySelectorAll(".view");
-
-  tabs.forEach(t => {
-    t.addEventListener("click", async () => {
-      tabs.forEach(x => x.classList.remove("active"));
-      t.classList.add("active");
-
-      const id = t.dataset.view;
-      views.forEach(v => v.classList.remove("active"));
-      document.getElementById(id).classList.add("active");
-
-      if (id === "viewHistorial") await cargarHistorial();
-    });
-  });
-}
-
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
     irLogin();
@@ -432,13 +262,7 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
-  if (!perfil.rol) {
-    irLogin();
-    return;
-  }
-
-  topSub.textContent = `${perfil.nombre || "Usuario"} · ${perfil.rol || "sin rol"}`;
-
+  topSub.textContent = `${perfil.nombre || "Usuario"} · ${perfil.rol || ""}`;
   cfgNombre.textContent = perfil.nombre || "---";
   cfgRol.textContent = perfil.rol || "---";
   cfgCorreo.textContent = user.email || "---";
@@ -450,18 +274,14 @@ onAuthStateChanged(auth, async (user) => {
   txtSucursal.textContent = sucursal?.nombre || "No asignada";
   cfgSucursal.textContent = sucursal?.nombre || "No asignada";
 
-  if (perfil.rol === "admin") {
-    adminBox.classList.remove("hidden");
-  } else {
-    adminBox.classList.add("hidden");
-  }
+  if (perfil.rol === "admin") adminBox.classList.remove("hidden");
+  else adminBox.classList.add("hidden");
 
   const letra = (perfil.nombre || "R").trim().charAt(0).toUpperCase();
   document.querySelector(".avatar").textContent = letra;
 
   setMap(sucursal?.lat || 20.6736, sucursal?.lng || -103.344);
-  activarTabs();
-  await cargarJornadaHoy();
+  await cargarSucursalesMapa();
 });
 
 btnLogout.addEventListener("click", async () => {
