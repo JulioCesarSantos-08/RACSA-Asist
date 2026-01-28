@@ -43,11 +43,14 @@ const stTotal = document.getElementById("stTotal");
 const stMin = document.getElementById("stMin");
 const stHoras = document.getElementById("stHoras");
 
+const btnExportarExcel = document.getElementById("btnExportarExcel");
+
 let currentUser = null;
 let perfil = null;
 
 let cacheUsuarios = {};
 let cacheSucursales = {};
+let jornadasExcel = [];
 
 function setMsg(text, type = "") {
   msgSucursal.textContent = text;
@@ -334,6 +337,7 @@ async function cargarJornadas() {
   const snap = await get(ref(db, "jornadas"));
   if (!snap.exists()) {
     renderJornadas([]);
+    jornadasExcel = [];
     return;
   }
 
@@ -370,8 +374,58 @@ async function cargarJornadas() {
 
   arr = arr.slice(0, 80);
 
+  jornadasExcel = arr;
+
   renderJornadas(arr);
 }
+
+function exportarExcel() {
+  if (!jornadasExcel.length) {
+    alert("No hay registros para exportar");
+    return;
+  }
+
+  const headers = [
+    "Fecha",
+    "Nombre",
+    "Rol",
+    "Sucursal",
+    "Estado",
+    "Entrada",
+    "Salida",
+    "Minutos",
+    "Tiempo"
+  ];
+
+  let csv = headers.join(",") + "\n";
+
+  jornadasExcel.forEach(j => {
+    const mins = calcularMinutos(j);
+    csv += [
+      j.fechaKey || "",
+      j.nombre || "",
+      j.rol || "",
+      j.sucursalNombre || "",
+      j.estado || "",
+      hora(j.entradaTs),
+      hora(j.salidaTs),
+      mins ?? "",
+      minutosAHoras(mins)
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
+  });
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `jornadas_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+btnExportarExcel.addEventListener("click", exportarExcel);
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
