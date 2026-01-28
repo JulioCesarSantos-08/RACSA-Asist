@@ -34,9 +34,6 @@ const btnUbicacion = document.getElementById("btnUbicacion");
 const btnEntrada = document.getElementById("btnEntrada");
 const btnSalida = document.getElementById("btnSalida");
 
-const mapFrame = document.getElementById("mapFrame");
-const mapDiv = document.getElementById("map");
-
 const historialList = document.getElementById("historialList");
 const btnRefrescarHistorial = document.getElementById("btnRefrescarHistorial");
 
@@ -47,6 +44,8 @@ const cfgCorreo = document.getElementById("cfgCorreo");
 const adminBox = document.getElementById("adminBox");
 const btnIrAdmin = document.getElementById("btnIrAdmin");
 
+const mapDiv = document.getElementById("map");
+
 let currentUser = null;
 let perfil = null;
 let sucursal = null;
@@ -54,6 +53,8 @@ let ubicacionUsuario = null;
 let jornadaHoy = null;
 
 let map = null;
+let markerUsuario = null;
+let circleUsuario = null;
 let markersSucursales = [];
 
 function setMsg(text, type = "") {
@@ -136,7 +137,7 @@ async function getJornada(uid, fechaKey) {
 function initMap(lat, lng) {
   if (map) return;
 
-  map = L.map(mapDiv).setView([lat, lng], 15);
+  map = L.map(mapDiv).setView([lat, lng], 16);
 
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     maxZoom: 19
@@ -155,19 +156,45 @@ async function cargarSucursalesMapa() {
   const iconSucursal = L.icon({
     iconUrl: "imagenes/icono1.png",
     iconSize: [36, 36],
-    iconAnchor: [18, 36],
-    popupAnchor: [0, -36]
+    iconAnchor: [18, 36]
   });
 
   Object.values(snap.val()).forEach(s => {
     if (!s.lat || !s.lng) return;
 
-    const marker = L.marker([s.lat, s.lng], { icon: iconSucursal })
+    const m = L.marker([s.lat, s.lng], { icon: iconSucursal })
       .addTo(map)
-      .bindPopup(`<strong>${s.nombre || "Sucursal"}</strong>`);
+      .bindPopup(s.nombre || "Sucursal");
 
-    markersSucursales.push(marker);
+    markersSucursales.push(m);
   });
+}
+
+function pintarUsuarioMapa() {
+  if (!map || !ubicacionUsuario) return;
+
+  if (markerUsuario) map.removeLayer(markerUsuario);
+  if (circleUsuario) map.removeLayer(circleUsuario);
+
+  markerUsuario = L.circleMarker(
+    [ubicacionUsuario.lat, ubicacionUsuario.lng],
+    {
+      radius: 7,
+      color: "#1e88e5",
+      fillColor: "#2196f3",
+      fillOpacity: 1
+    }
+  ).addTo(map);
+
+  circleUsuario = L.circle(
+    [ubicacionUsuario.lat, ubicacionUsuario.lng],
+    {
+      radius: ubicacionUsuario.accuracy,
+      color: "#1e88e5",
+      fillColor: "#1e88e5",
+      fillOpacity: 0.15
+    }
+  ).addTo(map);
 }
 
 function setMap(lat, lng) {
@@ -211,11 +238,6 @@ function evaluarAcceso() {
 function obtenerUbicacion() {
   setMsg("");
 
-  if (!navigator.geolocation) {
-    setMsg("Tu navegador no soporta geolocalización.", "err");
-    return;
-  }
-
   txtEstado.textContent = "Obteniendo ubicación...";
 
   navigator.geolocation.getCurrentPosition(
@@ -227,19 +249,118 @@ function obtenerUbicacion() {
       };
 
       setMap(ubicacionUsuario.lat, ubicacionUsuario.lng);
-      txtEstado.textContent = "Ubicación actualizada";
+      pintarUsuarioMapa();
       evaluarAcceso();
+      txtEstado.textContent = "Ubicación actualizada";
     },
     () => {
-      setMsg("No se pudo obtener tu ubicación. Activa GPS y permisos.", "err");
-      txtEstado.textContent = "Ubicación no disponible";
+      setMsg("No se pudo obtener tu ubicación.", "err");
     },
-    {
-      enableHighAccuracy: true,
-      timeout: 12000,
-      maximumAge: 0
-    }
+    { enableHighAccuracy: true }
   );
+}
+
+function pintarJornadaHoy() {
+  txtEntradaHoy.textContent = jornadaHoy?.entradaTs ? hora(jornadaHoy.entradaTs) : "---";
+  txtSalidaHoy.textContent = jornadaHoy?.salidaTs ? hora(jornadaHoy.salidaTs) : "---";
+
+  if (jornadaHoy?.entradaTs && jornadaHoy?.salidaTs) {
+    const min = Math.max(0, Math.round((jornadaHoy.salidaTs - jornadaHoy.entradaTs) / 60000));
+    txtTiempoHoy.textContent = minutosAHoras(min);
+  } else {
+    txtTiempoHoy.textContent = "---";
+  }
+
+  btnEntrada.disabled = !!jornadaHoy?.entradaTs;
+  btnSalida.disabled = !jornadaHoy?.entradaTs || !!jornadaHoy?.salidaTs;
+}
+
+async function cargarJornadaHoy() {
+  if (!currentUser) return;
+  jornadaHoy = await getJornada(currentUser.uid, keyHoy());
+  pintarJornadaHoy();
+}
+
+async function registrarEntrada() {
+  if (!evaluarAcceso()) return;
+
+  const fechaKey = keyHoy();
+  const now = Date.now();
+
+  const data = {
+    uid: currentUser.uid,
+    nombre: perfil.nombre,
+    rol: perfil.rol,
+    sucursalId: perfil.sucursalId,
+    sucursalNombre: sucursal?.nombre || "",
+    entradaTs: now,
+    salidaTs: null,
+    estado: "abierta",
+    entradaLat: ubicacionUsuario.lat,
+    entradaLng: ubicacionUsuario.lng
+  };
+
+  await set(ref(db, `jornadas/${currentUser.uid}/${fechaKey}`), data);
+  await cargarJornadaHoy();
+}
+
+async function registrarSalida() {
+  if (!evaluarAcceso() || !jornadaHoy?.entradaTs) return;
+
+  const now = Date.now();
+  const min = Math.max(0, Math.round((now - jornadaHoy.entradaTs) / 60000));
+
+  await update(ref(db, `jornadas/${currentUser.uid}/${keyHoy()}`), {
+    salidaTs: now,
+    minutos: min,
+    estado: "cerrada"
+  });
+
+  await cargarJornadaHoy();
+}
+
+function renderHistorial(items) {
+  if (!items.length) {
+    historialList.innerHTML = `<div class="muted">Sin jornadas aún.</div>`;
+    return;
+  }
+
+  historialList.innerHTML = items.map(x => `
+    <div class="item">
+      <div class="item-top">
+        <div class="item-title">${x.fechaKey} · ${x.sucursalNombre || ""}</div>
+        <div class="pill ${x.estado === "cerrada" ? "pill-closed" : "pill-open"}">${x.estado}</div>
+      </div>
+      <div class="item-sub">Entrada: ${hora(x.entradaTs)} · Salida: ${hora(x.salidaTs)}</div>
+      <div class="item-sub">Tiempo: ${minutosAHoras(x.minutos)}</div>
+    </div>
+  `).join("");
+}
+
+async function cargarHistorial() {
+  const snap = await get(ref(db, `jornadas/${currentUser.uid}`));
+  if (!snap.exists()) {
+    renderHistorial([]);
+    return;
+  }
+
+  const arr = Object.entries(snap.val()).map(([k, v]) => ({ ...v, fechaKey: k }));
+  arr.sort((a, b) => b.fechaKey.localeCompare(a.fechaKey));
+  renderHistorial(arr.slice(0, 30));
+}
+
+function activarTabs() {
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", async () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      document.getElementById(t.dataset.view).classList.add("active");
+
+      if (t.dataset.view === "viewHistorial") await cargarHistorial();
+    });
+  });
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -249,53 +370,38 @@ onAuthStateChanged(auth, async (user) => {
   }
 
   currentUser = user;
-
   perfil = await getPerfil(user.uid);
-  if (!perfil) {
-    irPerfil();
-    return;
-  }
+  if (!perfil) return irPerfil();
 
   if (perfil.activo === false) {
     await signOut(auth);
-    irLogin();
-    return;
+    return irLogin();
   }
 
-  topSub.textContent = `${perfil.nombre || "Usuario"} · ${perfil.rol || ""}`;
-  cfgNombre.textContent = perfil.nombre || "---";
-  cfgRol.textContent = perfil.rol || "---";
-  cfgCorreo.textContent = user.email || "---";
+  if (perfil.sucursalId) sucursal = await getSucursalById(perfil.sucursalId);
 
-  if (perfil.sucursalId) {
-    sucursal = await getSucursalById(perfil.sucursalId);
-  }
-
-  txtSucursal.textContent = sucursal?.nombre || "No asignada";
+  topSub.textContent = `${perfil.nombre} · ${perfil.rol}`;
+  cfgNombre.textContent = perfil.nombre;
+  cfgRol.textContent = perfil.rol;
+  cfgCorreo.textContent = user.email;
   cfgSucursal.textContent = sucursal?.nombre || "No asignada";
+  txtSucursal.textContent = sucursal?.nombre || "No asignada";
 
   if (perfil.rol === "admin") adminBox.classList.remove("hidden");
-  else adminBox.classList.add("hidden");
-
-  const letra = (perfil.nombre || "R").trim().charAt(0).toUpperCase();
-  document.querySelector(".avatar").textContent = letra;
 
   setMap(sucursal?.lat || 20.6736, sucursal?.lng || -103.344);
   await cargarSucursalesMapa();
+  activarTabs();
+  await cargarJornadaHoy();
 });
 
-btnLogout.addEventListener("click", async () => {
+btnLogout.onclick = async () => {
   await signOut(auth);
-  localStorage.clear();
   irLogin();
-});
+};
 
-btnUbicacion.addEventListener("click", obtenerUbicacion);
-btnEntrada.addEventListener("click", registrarEntrada);
-btnSalida.addEventListener("click", registrarSalida);
-
-btnRefrescarHistorial.addEventListener("click", cargarHistorial);
-
-btnIrAdmin.addEventListener("click", () => {
-  window.location.href = "admin.html";
-});
+btnUbicacion.onclick = obtenerUbicacion;
+btnEntrada.onclick = registrarEntrada;
+btnSalida.onclick = registrarSalida;
+btnRefrescarHistorial.onclick = cargarHistorial;
+btnIrAdmin.onclick = () => location.href = "admin.html";
